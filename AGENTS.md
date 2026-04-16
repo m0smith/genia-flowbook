@@ -2,6 +2,8 @@
 
 Genia Flowbook – Copilot Instructions
 
+Flowbook is defined in Genia; any Python code is a temporary host adapter and must not define notebook semantics.
+
 ## Purpose
 Flowbook is a visual, flow-based notebook for the Genia language.
 

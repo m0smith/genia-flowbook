@@ -47,14 +47,25 @@ How this must be described in docs:
 4. CONTRACT vs IMPLEMENTATION
 --------------------------------
 
-Contract (portable/public semantics):
--
+Contract (portable semantics):
+- 
 
-Implementation (current host/runtime today):
--
+Implementation (Python today):
+- 
 
 Not implemented:
--
+- 
+
+Flowbook ownership check:
+- Is the notebook/cell/pipeline model defined in Genia terms? YES / NO
+- Is any host language defining Flowbook semantics? YES / NO
+
+If YES:
+- STOP and redesign before implementation
+
+- What is the thinnest possible host adapter?
+- What missing Genia capability is forcing host support?
+- What is the plan to remove or isolate that dependency?
 
 --------------------------------
 5. TEST STRATEGY
@@ -117,7 +128,11 @@ Does this:
 - preserve minimalism? YES / NO
 - avoid hidden behavior? YES / NO
 - keep semantics out of host? YES / NO
-- align with project philosophy? YES / NO
+- align with pattern-matching-first? YES / NO
+
+Flowbook-specific:
+- keeps Flowbook core in Genia rather than host code? YES / NO
+- prevents host adapter from becoming the spec? YES / NO
 
 Notes:
 -
