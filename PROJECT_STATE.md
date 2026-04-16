@@ -13,9 +13,9 @@ Implemented today:
 - Flowbook core boundary in TypeScript for notebook-shaped validation/execution requests
 - In-process host bridge that routes the React demo through notebook-shaped Flowbook core data
 - Compatibility notebook wrapper for the current graph prototype (`FlowGraph` -> single `pipeline_cell`)
-- Compatibility pipeline runtime behind the Flowbook core boundary for the current demo path
-- Topological pipeline execution with per-node output recording for the default demo path
-- Compatibility operation registry for the default demo path (source, lines, map(parse_int), sum)
+- Compatibility operation registry remains in the TypeScript host path for schema validation only
+- Default `src/genia/flowbook` interpreter now shells out to the Genia executable through a subprocess adapter instead of executing graphs through Python host fallback code
+- Default `src/genia/flowbook` subprocess interpreter now uses a finite default timeout
 - Black-box tests for the core/bridge execution boundary and structured error shape
 
 Specification and design (not yet implemented):
@@ -39,12 +39,13 @@ Specification and design (not yet implemented):
 Partial:
 - Notebook runtime boundary exists for the current TypeScript demo path, but only as a Phase 1 compatibility layer
 - React app no longer calls the graph executor as the primary runtime entrypoint
-- The current demo executes via notebook-shaped data and a single `pipeline_cell`
+- The current demo still routes through notebook-shaped data and a single `pipeline_cell`, but host-side execution now fails closed unless a Genia runtime adapter is provided
+- `src/genia/flowbook` now defaults to a Genia CLI subprocess adapter, but the repository still does not implement the full Genia-owned runtime transport / runner integration for the active host path
 - The repository now documents the React app as a temporary host shell rather than the product semantic implementation
 
 Not implemented:
 - Genia-owned runtime transport between the React host and `src/genia/flowbook`
-- Full replacement of the temporary compatibility runtime with a real Genia interpreter/runtime adapter
+- Host-path execution of the prototype graph through a real Genia interpreter/runtime adapter
 - Browser-native Genia execution
 - Notebook cells as first-class editable objects in the active React host path
 - Multi-cell notebook execution in the active React host path

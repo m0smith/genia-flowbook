@@ -32,24 +32,28 @@ function mainPipelineCell(notebook: NotebookData): PipelineCellData {
 }
 
 describe('Flowbook core execution', () => {
-  it('executes the default pipeline notebook successfully', () => {
+  it('fails safely when no Genia runtime adapter is wired into the host path', () => {
     const result = executeNotebook(makeDefaultNotebook());
 
-    expect(result.status).toBe('success');
+    expect(result.status).toBe('error');
     expect(result.notebook_valid).toBe(true);
     expect(result.execution_order).toEqual(['main-pipeline']);
-    expect(result.error).toBeUndefined();
+    expect(result.error).toMatchObject({
+      type: 'error',
+      code: 'EXECUTION_FAILED',
+      location: {
+        step: 'execution',
+        context: 'Pipeline execution',
+      },
+    });
 
     const pipelineResult = result.cell_results['main-pipeline'];
-    expect(pipelineResult.status).toBe('success');
-    if (pipelineResult.status === 'success') {
-      expect(pipelineResult.cell_type).toBe('pipeline_cell');
-      expect(pipelineResult.output).toEqual([15]);
-      expect(pipelineResult.node_outputs).toEqual({
-        n1: ['1\n2\n3\n4\n5'],
-        n2: ['1', '2', '3', '4', '5'],
-        n3: [1, 2, 3, 4, 5],
-        n4: [15],
+    expect(pipelineResult.status).toBe('error');
+    if (pipelineResult.status === 'error') {
+      expect(pipelineResult.error).toMatchObject({
+        code: 'EXECUTION_FAILED',
+        message:
+          'Flowbook execution requires a Genia runtime adapter; host-side pipeline execution is disabled.',
       });
     }
   });
@@ -76,7 +80,7 @@ describe('Flowbook core execution', () => {
     });
   });
 
-  it('returns a structured cycle error through the core contract', () => {
+  it('returns a structured execution failure instead of host-side cycle execution', () => {
     const notebook = makeDefaultNotebook();
     mainPipelineCell(notebook).pipeline.edges.push({ id: 'n4->n1', from: 'n4', to: 'n1' });
 
@@ -86,10 +90,10 @@ describe('Flowbook core execution', () => {
     expect(result.notebook_valid).toBe(true);
     expect(result.error).toMatchObject({
       type: 'error',
-      code: 'CYCLE_DETECTED',
+      code: 'EXECUTION_FAILED',
       location: {
-        step: 'validation',
-        context: 'Pipeline validation',
+        step: 'execution',
+        context: 'Pipeline execution',
       },
     });
   });
@@ -122,7 +126,7 @@ describe('Flowbook core execution', () => {
     });
   });
 
-  it('round-trips notebook data through JSON serialization without changing execution', () => {
+  it('round-trips notebook data through JSON serialization without changing failure semantics', () => {
     const notebook = makeDefaultNotebook();
     const serialized = JSON.stringify(notebook);
     const parsed = JSON.parse(serialized) as NotebookData;
@@ -130,12 +134,12 @@ describe('Flowbook core execution', () => {
     expect(validateNotebook(parsed)).toEqual({ ok: true, notebook_valid: true });
 
     const result = executeNotebook(parsed);
-    expect(result.status).toBe('success');
+    expect(result.status).toBe('error');
 
     const pipelineResult = result.cell_results['main-pipeline'];
-    expect(pipelineResult.status).toBe('success');
-    if (pipelineResult.status === 'success') {
-      expect(pipelineResult.output).toEqual([15]);
+    expect(pipelineResult.status).toBe('error');
+    if (pipelineResult.status === 'error') {
+      expect(pipelineResult.error.code).toBe('EXECUTION_FAILED');
     }
   });
 });

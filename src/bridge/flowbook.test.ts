@@ -25,18 +25,21 @@ function mainPipelineCell(notebook: NotebookData): PipelineCellData {
 }
 
 describe('Flowbook bridge contract', () => {
-  it('accepts notebook-shaped input and returns the stable execution envelope', () => {
+  it('accepts notebook-shaped input and returns a stable execution failure envelope without Genia', () => {
     const notebook = prototypeGraphToNotebook(makeDefaultGraph());
 
     const result = executeNotebook({ notebook });
 
     expect(result).toMatchObject({
-      status: 'success',
+      status: 'error',
       notebook_valid: true,
       execution_order: [PROTOTYPE_PIPELINE_CELL_ID],
       bindings: {},
     });
     expect(result.cell_results[PROTOTYPE_PIPELINE_CELL_ID]).toBeDefined();
+    expect(result.error).toMatchObject({
+      code: 'EXECUTION_FAILED',
+    });
   });
 
   it('validates notebook-shaped input without requiring any UI component state', () => {

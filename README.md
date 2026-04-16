@@ -13,7 +13,7 @@ This repository is in a staged migration from an early graph prototype to a real
 What is true today:
 - The browser app renders and edits a graph-shaped demo.
 - That demo now executes through a notebook-shaped Flowbook core boundary in TypeScript.
-- The current browser path uses a **temporary compatibility runtime** to preserve the demo behavior.
+- The current browser path no longer executes pipelines in TypeScript; it must be wired to Genia for real execution.
 - The React app is **not** the semantic source of truth anymore.
 
 What is **not** true today:
@@ -73,9 +73,7 @@ The default demo still renders the prototype pipeline:
 
 `source -> lines -> map(parse_int) -> sum`
 
-Running it should still produce `[15]`.
-
-That preserved output is a compatibility goal for the host demo. It does **not** mean the graph prototype is the final Flowbook model.
+Until a Genia runtime adapter is wired into the host path, execution should fail with a structured runtime error instead of running the pipeline in the host shell.
 
 ## What To Build Next
 

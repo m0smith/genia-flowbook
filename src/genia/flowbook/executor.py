@@ -2,6 +2,11 @@
 Flowbook Notebook Core: Execution Engine
 """
 
+import json
+import os
+import subprocess
+import tempfile
+from pathlib import Path
 from typing import Any, Dict, Optional, List
 from .model import (
     Notebook, Cell, NoteCell, ValueCell, PipelineCell, InspectCell, BindingCell,
@@ -9,6 +14,8 @@ from .model import (
     ExecutionResult, ExecutionContext, ExecutionStatus, CellType,
 )
 from .references import build_dependency_graph, get_cell_by_id
+
+DEFAULT_GENIA_TIMEOUT_SECONDS = 30.0
 
 
 class GeniaInterpreter:
@@ -28,6 +35,118 @@ class GeniaInterpreter:
         """
         # This will be injected at runtime
         raise NotImplementedError("GeniaInterpreter must be injected")
+
+
+class SubprocessGeniaInterpreter(GeniaInterpreter):
+    """Execute Flowbook pipelines through the Genia CLI."""
+
+    def __init__(
+        self,
+        executable_path: Optional[str] = None,
+        runner_path: Optional[str] = None,
+        timeout_seconds: Optional[float] = None,
+    ) -> None:
+        self.executable_path = executable_path or os.environ.get(
+            "GENIA_FLOWBOOK_EXECUTABLE",
+            "genia",
+        )
+        self.runner_path = runner_path or os.environ.get("GENIA_FLOWBOOK_RUNNER")
+        self.timeout_seconds = (
+            DEFAULT_GENIA_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds
+        )
+
+    def execute_pipeline(
+        self,
+        pipeline_data: Dict[str, Any],
+        input_val: Any = None,
+    ) -> Dict[str, Any]:
+        if not self.runner_path:
+            return _make_interpreter_result(
+                success=False,
+                error="Genia runner path is not set. Set GENIA_FLOWBOOK_RUNNER or inject runner_path.",
+            )
+
+        runner = Path(self.runner_path)
+        if not runner.exists():
+            return _make_interpreter_result(
+                success=False,
+                error=f"Genia runner path does not exist: {runner}",
+            )
+
+        payload_path: Optional[Path] = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                suffix=".json",
+                delete=False,
+            ) as payload_file:
+                json.dump(
+                    {
+                        "pipeline": pipeline_data,
+                        "input": input_val,
+                    },
+                    payload_file,
+                )
+                payload_path = Path(payload_file.name)
+
+            try:
+                completed = subprocess.run(
+                    [self.executable_path, str(runner), str(payload_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=self.timeout_seconds,
+                    check=False,
+                )
+            except FileNotFoundError:
+                return _make_interpreter_result(
+                    success=False,
+                    error=f"Genia executable not found: {self.executable_path}",
+                )
+            except subprocess.TimeoutExpired:
+                return _make_interpreter_result(
+                    success=False,
+                    error=f"Genia execution timed out after {self.timeout_seconds} seconds.",
+                )
+            except OSError as exc:
+                return _make_interpreter_result(
+                    success=False,
+                    error=f"Failed to launch Genia subprocess: {exc}",
+                )
+
+            stdout = completed.stdout.strip()
+            stderr = completed.stderr.strip()
+
+            if completed.returncode != 0:
+                error_message = stderr or stdout or (
+                    f"Genia exited with status {completed.returncode}."
+                )
+                return _make_interpreter_result(success=False, error=error_message)
+
+            if not stdout:
+                return _make_interpreter_result(
+                    success=False,
+                    error="Genia subprocess returned empty stdout.",
+                )
+
+            try:
+                parsed = json.loads(stdout)
+            except json.JSONDecodeError as exc:
+                return _make_interpreter_result(
+                    success=False,
+                    error=f"Genia subprocess returned invalid JSON: {exc}",
+                )
+
+            if not isinstance(parsed, dict):
+                return _make_interpreter_result(
+                    success=False,
+                    error="Genia subprocess returned JSON that was not an object.",
+                )
+
+            return _normalize_interpreter_result(parsed)
+        finally:
+            if payload_path is not None:
+                payload_path.unlink(missing_ok=True)
 
 
 def execute_notebook(
@@ -331,39 +450,50 @@ def _build_execution_result(
 
 
 def _get_default_interpreter() -> GeniaInterpreter:
-    """Get the default interpreter (delegates to existing Genia executor)."""
-    from src.engine import executeGraph
-    
-    class GenieFlowInterpreter(GeniaInterpreter):
-        def execute_pipeline(self, pipeline_data: Dict[str, Any], input_val: Any = None) -> Dict[str, Any]:
-            # Import the flow graph model and executor from the project
-            from src.model import createNode, createEdge, createGraph, FlowGraph
-            
-            # Convert pipeline_data to FlowGraph format
-            nodes = []
-            for node_data in pipeline_data.get("nodes", []):
-                nodes.append(createNode(
-                    node_data["id"],
-                    node_data["type"],
-                    node_data["operation"],
-                    node_data.get("x", 0),
-                    node_data.get("y", 0),
-                ))
-            
-            edges = []
-            for edge_data in pipeline_data.get("edges", []):
-                edges.append(createEdge(edge_data["from"], edge_data["to"]))
-            
-            graph = createGraph(nodes, edges)
-            
-            # Execute using existing executor
-            result = executeGraph(graph, input_val)
-            
-            return {
-                "success": result["success"],
-                "output": result["output"],
-                "error": result.get("error"),
-                "nodeOutputs": result.get("nodeOutputs", {}),
-            }
-    
-    return GenieFlowInterpreter()
+    """Get the default interpreter backed by the Genia CLI."""
+    return SubprocessGeniaInterpreter()
+
+
+def _make_interpreter_result(
+    success: bool,
+    output: Optional[Any] = None,
+    error: Optional[str] = None,
+    node_outputs: Optional[Any] = None,
+) -> Dict[str, Any]:
+    normalized_output = output if isinstance(output, list) else []
+    normalized_node_outputs = node_outputs if isinstance(node_outputs, dict) else {}
+    normalized_error = error if error else None
+    return {
+        "success": success,
+        "output": normalized_output,
+        "error": normalized_error,
+        "nodeOutputs": normalized_node_outputs,
+    }
+
+
+def _normalize_interpreter_result(result: Dict[str, Any]) -> Dict[str, Any]:
+    success = bool(result.get("success", False))
+    output = result.get("output", [])
+    if not isinstance(output, list):
+        output = [output] if output is not None else []
+
+    error = result.get("error")
+    if error is not None and not isinstance(error, str):
+        error = str(error)
+
+    node_outputs = result.get("nodeOutputs", {})
+    if not isinstance(node_outputs, dict):
+        node_outputs = {}
+
+    if success:
+        return _make_interpreter_result(
+            success=True,
+            output=output,
+            error=error,
+            node_outputs=node_outputs,
+        )
+
+    return _make_interpreter_result(
+        success=False,
+        error=error or "Genia subprocess reported failure.",
+    )
