@@ -6,7 +6,12 @@
 
 Flowbook organizes computation into **notebooks** containing ordered **cells**. Each cell encapsulates a specific kind of task or data.
 
-This document explains how cells relate to the existing FlowGraph model and execution engine.
+This document explains how cells relate to the existing FlowGraph prototype and the staged migration toward notebook execution.
+
+Important:
+- The current React app is a temporary host shell.
+- The old TypeScript graph executor is not the product semantic authority.
+- Browser-native Genia is not implemented yet.
 
 ---
 
@@ -38,10 +43,10 @@ pipeline_cell → inspect_cell [displays output]
 ## Relationship to FlowGraph
 
 ### Current (implemented)
-- Single FlowGraph per session
+- Single FlowGraph-shaped demo in the temporary React host shell
 - Nodes: source / transform / sink
 - Edges: connections between nodes
-- Executor: topological sort + per-node execution
+- Execution routed through a notebook-shaped compatibility boundary
 
 ### Notebook (specification)
 - Multiple graphs, one per `pipeline_cell`
@@ -53,7 +58,8 @@ pipeline_cell → inspect_cell [displays output]
 FlowGraph (existing)       → pipeline_cell.pipeline (specification)
 Node                       → node in pipeline.nodes
 Edge                       → edge in pipeline.edges
-executeGraph()             → execute a single pipeline_cell
+prototypeGraphToNotebook() → wrap graph as a single pipeline_cell notebook
+executeNotebook()          → execute notebook-shaped data through the Flowbook boundary
 ```
 
 ---
@@ -85,9 +91,9 @@ For each cell in notebook order:
     │
     ├─→ value_cell       [return {value}]
     │
-    ├─→ pipeline_cell    [execute FlowGraph]
-    │                    └─ Run topological executor
-    │                    └─ Return final node output
+    ├─→ pipeline_cell    [execute pipeline via Flowbook core / Genia direction]
+    │                    └─ Current host path uses a temporary compatibility runtime
+    │                    └─ Long-term ownership belongs in Genia
     │
     ├─→ inspect_cell     [get output of source_cell]
     │
@@ -197,7 +203,7 @@ These are hints for implementers; not defined in the spec:
 1. **Cell execution engine**: Walk notebook in order, dispatch by cell type
 2. **Dependency tracking**: Build backward-reference graph, verify acyclicity
 3. **Operation registry**: Integrates with Genia interpreter's operations
-4. **UI binding**: Cells bind to UI elements; execution updates UI per cell
+4. **UI binding**: Host shell renders returned results; UI must not define semantics
 5. **Error recovery**: Allow re-execution of cells after fixes (not in spec)
 6. **Persistence**: Serialize notebooks to JSON files; deserialize and validate
 

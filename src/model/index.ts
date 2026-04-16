@@ -1,8 +1,6 @@
 import type { FlowNode, FlowEdge, FlowGraph } from './types';
 export type { NodeType, FlowNode, FlowEdge, FlowGraph } from './types';
 
-let _nodeCounter = 0;
-
 export function createNode(
   id: string,
   type: FlowNode['type'],
@@ -20,12 +18,4 @@ export function createEdge(from: string, to: string): FlowEdge {
 
 export function createGraph(nodes: FlowNode[], edges: FlowEdge[]): FlowGraph {
   return { nodes, edges };
-}
-
-export function nextNodeId(): string {
-  return `node-${++_nodeCounter}`;
-}
-
-export function resetNodeCounter(): void {
-  _nodeCounter = 0;
 }

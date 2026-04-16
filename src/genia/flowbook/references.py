@@ -159,25 +159,9 @@ def _kahn_topological_sort(
     
     return result
 
-
-def get_cell_id_by_index(notebook: Notebook, index: int) -> Optional[str]:
-    """Get cell ID by its index in the notebook."""
-    if 0 <= index < len(notebook.cells):
-        return notebook.cells[index].id
-    return None
-
-
 def get_cell_by_id(notebook: Notebook, cell_id: str) -> Optional[Cell]:
     """Get a cell by its ID."""
     for cell in notebook.cells:
         if cell.id == cell_id:
             return cell
-    return None
-
-
-def get_cell_index(notebook: Notebook, cell_id: str) -> Optional[int]:
-    """Get the index of a cell by its ID."""
-    for idx, cell in enumerate(notebook.cells):
-        if cell.id == cell_id:
-            return idx
     return None

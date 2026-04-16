@@ -2,8 +2,9 @@ import { useState } from 'react';
 import type { FlowGraph } from './model/types';
 import type { NodeType } from './model/types';
 import { createNode, createEdge, createGraph } from './model';
-import type { ExecutionResult } from './engine';
-import { executeGraph } from './engine';
+import type { NotebookExecutionResultData } from './bridge/types';
+import { executeNotebook } from './bridge/flowbook';
+import { prototypeGraphToNotebook, PROTOTYPE_PIPELINE_CELL_ID } from './bridge/adapters';
 import FlowCanvas from './ui/FlowCanvas';
 import Toolbar from './ui/Toolbar';
 
@@ -37,7 +38,7 @@ export default function App() {
   const [graph, setGraph] = useState<FlowGraph>(makeDefaultGraph);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
-  const [result, setResult] = useState<ExecutionResult | null>(null);
+  const [result, setResult] = useState<NotebookExecutionResultData | null>(null);
 
   function handleNodeClick(id: string) {
     if (connectingFrom === null) {
@@ -67,7 +68,11 @@ export default function App() {
   }
 
   function handleRun() {
-    setResult(executeGraph(graph));
+    setResult(
+      executeNotebook({
+        notebook: prototypeGraphToNotebook(graph),
+      }),
+    );
   }
 
   function handleReset() {
@@ -76,6 +81,18 @@ export default function App() {
     setConnectingFrom(null);
     setResult(null);
   }
+
+  const pipelineResult =
+    result?.cell_results[PROTOTYPE_PIPELINE_CELL_ID] &&
+    result.cell_results[PROTOTYPE_PIPELINE_CELL_ID].status === 'success' &&
+    result.cell_results[PROTOTYPE_PIPELINE_CELL_ID].cell_type === 'pipeline_cell'
+      ? result.cell_results[PROTOTYPE_PIPELINE_CELL_ID]
+      : null;
+
+  const finalOutput = pipelineResult?.output ?? [];
+  const nodeOutputs = pipelineResult?.node_outputs ?? {};
+  const resultError = result?.error?.message;
+  const success = result?.status === 'success';
 
   return (
     <div style={{ padding: 24, fontFamily: 'sans-serif', background: '#0a0f1e', minHeight: '100vh', color: '#f1f5f9' }}>
@@ -109,12 +126,12 @@ export default function App() {
         <div style={{ marginTop: 20 }}>
           <h2 style={{ fontSize: 16, marginBottom: 8 }}>
             Execution Result:{' '}
-            <span style={{ color: result.success ? '#22c55e' : '#ef4444' }}>
-              {result.success ? 'SUCCESS' : 'ERROR'}
+            <span style={{ color: success ? '#22c55e' : '#ef4444' }}>
+              {success ? 'SUCCESS' : 'ERROR'}
             </span>
           </h2>
-          {result.error && (
-            <p style={{ color: '#ef4444', fontFamily: 'monospace' }}>{result.error}</p>
+          {resultError && (
+            <p style={{ color: '#ef4444', fontFamily: 'monospace' }}>{resultError}</p>
           )}
           <table style={{ borderCollapse: 'collapse', fontSize: 13, fontFamily: 'monospace' }}>
             <thead>
@@ -130,8 +147,8 @@ export default function App() {
                   <td style={{ padding: '4px 12px', color: '#94a3b8' }}>{node.id}</td>
                   <td style={{ padding: '4px 12px', color: '#38bdf8' }}>{node.operation}</td>
                   <td style={{ padding: '4px 12px', color: '#f1f5f9' }}>
-                    {result.nodeOutputs[node.id] !== undefined
-                      ? JSON.stringify(result.nodeOutputs[node.id])
+                    {nodeOutputs[node.id] !== undefined
+                      ? JSON.stringify(nodeOutputs[node.id])
                       : '—'}
                   </td>
                 </tr>
@@ -139,7 +156,7 @@ export default function App() {
             </tbody>
           </table>
           <p style={{ marginTop: 8, color: '#facc15' }}>
-            Final output: <strong>{JSON.stringify(result.output)}</strong>
+            Final output: <strong>{JSON.stringify(finalOutput)}</strong>
           </p>
         </div>
       )}
