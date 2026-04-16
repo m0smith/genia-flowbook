@@ -83,8 +83,10 @@ export default function App() {
 
       <Toolbar
         onAddNode={handleAddNode}
+        onConnect={() => setConnectingFrom(selectedNodeId)}
         onRun={handleRun}
         onReset={handleReset}
+        selectedNodeId={selectedNodeId}
         connectingFrom={connectingFrom}
       />
 
