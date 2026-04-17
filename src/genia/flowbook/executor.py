@@ -14,6 +14,7 @@ from .model import (
     ExecutionResult, ExecutionContext, ExecutionStatus, CellType,
 )
 from .references import build_dependency_graph, get_cell_by_id
+from .workflow import execute_workflow, list_supported_operations
 
 DEFAULT_GENIA_TIMEOUT_SECONDS = 30.0
 
@@ -35,6 +36,24 @@ class GeniaInterpreter:
         """
         # This will be injected at runtime
         raise NotImplementedError("GeniaInterpreter must be injected")
+
+    def list_operations(self) -> List[str]:
+        """Return supported operation names when the interpreter can expose them."""
+        return []
+
+
+class LocalGeniaInterpreter(GeniaInterpreter):
+    """Execute Flowbook workflows in the Genia-owned in-repo workflow runner."""
+
+    def execute_pipeline(
+        self,
+        pipeline_data: Dict[str, Any],
+        input_val: Any = None,
+    ) -> Dict[str, Any]:
+        return execute_workflow(pipeline_data, input_val=input_val)
+
+    def list_operations(self) -> List[str]:
+        return list_supported_operations()
 
 
 class SubprocessGeniaInterpreter(GeniaInterpreter):
@@ -147,6 +166,9 @@ class SubprocessGeniaInterpreter(GeniaInterpreter):
         finally:
             if payload_path is not None:
                 payload_path.unlink(missing_ok=True)
+
+    def list_operations(self) -> List[str]:
+        return []
 
 
 def execute_notebook(
@@ -297,6 +319,7 @@ def _execute_pipeline_cell(
     """Execute a pipeline cell."""
     
     # Check upstream dependencies
+    pipeline_input: List[Any] = []
     for dep_id in cell.depends_on:
         if dep_id not in context.cell_results:
             from .errors import make_upstream_failure_error, ExecutionError
@@ -308,11 +331,13 @@ def _execute_pipeline_cell(
             from .errors import make_upstream_failure_error, ExecutionError
             error = make_upstream_failure_error(cell.id, dep_id)
             return CellResultError(cell_id=cell.id, error=error)
+        if isinstance(result, CellResultSuccess):
+            pipeline_input.extend(result.output)
     
     # Execute pipeline
     try:
         pipeline_dict = _serialize_pipeline_for_interpreter(cell.pipeline)
-        exec_result = interpreter.execute_pipeline(pipeline_dict)
+        exec_result = interpreter.execute_pipeline(pipeline_dict, input_val=pipeline_input)
         
         if not exec_result.get("success", False):
             from .errors import make_execution_failed_error, ExecutionError
@@ -330,6 +355,7 @@ def _execute_pipeline_cell(
             cell_id=cell.id,
             cell_type=cell.type,
             output=output,
+            node_outputs=exec_result.get("nodeOutputs", {}),
         )
     
     except Exception as e:
@@ -450,8 +476,8 @@ def _build_execution_result(
 
 
 def _get_default_interpreter() -> GeniaInterpreter:
-    """Get the default interpreter backed by the Genia CLI."""
-    return SubprocessGeniaInterpreter()
+    """Get the default interpreter backed by the in-repo Genia workflow runner."""
+    return LocalGeniaInterpreter()
 
 
 def _make_interpreter_result(

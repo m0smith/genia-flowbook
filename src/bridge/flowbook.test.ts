@@ -7,15 +7,13 @@ import type { NotebookData, PipelineCellData } from './types';
 function makeDefaultGraph() {
   return createGraph(
     [
-      createNode('n1', 'source', 'source', 100, 200),
-      createNode('n2', 'transform', 'lines', 300, 200),
-      createNode('n3', 'transform', 'map(parse_int)', 500, 200),
-      createNode('n4', 'sink', 'sum', 700, 200),
+      createNode('n1', 'source', 'input', 100, 200),
+      createNode('n2', 'transform', 'inc', 300, 200),
+      createNode('n3', 'sink', 'sum', 500, 200),
     ],
     [
       createEdge('n1', 'n2'),
       createEdge('n2', 'n3'),
-      createEdge('n3', 'n4'),
     ],
   );
 }
@@ -25,20 +23,21 @@ function mainPipelineCell(notebook: NotebookData): PipelineCellData {
 }
 
 describe('Flowbook bridge contract', () => {
-  it('accepts notebook-shaped input and returns a stable execution failure envelope without Genia', () => {
+  it('accepts notebook-shaped input and returns Genia-owned execution results', () => {
     const notebook = prototypeGraphToNotebook(makeDefaultGraph());
 
     const result = executeNotebook({ notebook });
 
     expect(result).toMatchObject({
-      status: 'error',
+      status: 'success',
       notebook_valid: true,
       execution_order: [PROTOTYPE_PIPELINE_CELL_ID],
       bindings: {},
     });
-    expect(result.cell_results[PROTOTYPE_PIPELINE_CELL_ID]).toBeDefined();
-    expect(result.error).toMatchObject({
-      code: 'EXECUTION_FAILED',
+    expect(result.error).toBeNull();
+    expect(result.cell_results[PROTOTYPE_PIPELINE_CELL_ID]).toMatchObject({
+      status: 'success',
+      output: [0],
     });
   });
 

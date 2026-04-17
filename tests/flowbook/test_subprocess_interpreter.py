@@ -4,6 +4,7 @@ from pathlib import Path
 
 from genia.flowbook.executor import (
     DEFAULT_GENIA_TIMEOUT_SECONDS,
+    LocalGeniaInterpreter,
     SubprocessGeniaInterpreter,
     _get_default_interpreter,
 )
@@ -215,5 +216,5 @@ def test_default_timeout_is_bounded():
     assert interpreter.timeout_seconds == DEFAULT_GENIA_TIMEOUT_SECONDS
 
 
-def test_default_interpreter_is_subprocess_backed():
-    assert isinstance(_get_default_interpreter(), SubprocessGeniaInterpreter)
+def test_default_interpreter_is_local_workflow_runner():
+    assert isinstance(_get_default_interpreter(), LocalGeniaInterpreter)

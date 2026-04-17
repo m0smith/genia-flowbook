@@ -12,8 +12,10 @@ This repository is in a staged migration from an early graph prototype to a real
 
 What is true today:
 - The browser app renders and edits a graph-shaped demo.
-- That demo now executes through a notebook-shaped Flowbook core boundary in TypeScript.
-- The current browser path no longer executes pipelines in TypeScript; it must be wired to Genia for real execution.
+- That demo now routes through a notebook-shaped Flowbook core boundary in TypeScript.
+- In Node/test environments, that TypeScript boundary delegates validation and execution into the Genia-owned Python path.
+- The current browser path no longer executes pipelines in TypeScript and still fails closed until browser/runtime transport is wired to Genia.
+- `src/genia/flowbook` now includes an in-repo Genia-owned workflow runner for minimal pipeline execution and validation.
 - The React app is **not** the semantic source of truth anymore.
 
 What is **not** true today:
@@ -44,7 +46,7 @@ It must not define notebook semantics, pipeline semantics, or operation semantic
 
 ```text
 src/
-  core/flowbook/   # Current Flowbook execution boundary for the host path
+  core/flowbook/   # Thin host transport/client boundary; not the semantic runtime
   bridge/          # Host bridge + temporary graph-to-notebook adapter
   model/           # Temporary graph editor data for the React host
   engine/          # Deprecated compatibility wrapper; not authoritative
@@ -52,11 +54,11 @@ src/
   App.tsx          # Temporary host shell wiring
 
 src/genia/flowbook/
-  # Target Genia-owned notebook core path
+  # Genia-owned notebook core path, including the local workflow runner MVP
 ```
 
 Important:
-- `src/core/flowbook` is the current executable boundary for the browser demo path.
+- `src/core/flowbook` is a thin host boundary and must not define notebook or pipeline semantics.
 - `src/engine` is compatibility scaffolding and must not regain semantic ownership.
 - `src/genia/flowbook` is the intended long-term home of Flowbook core semantics.
 
@@ -71,9 +73,16 @@ npm test
 
 The default demo still renders the prototype pipeline:
 
-`source -> lines -> map(parse_int) -> sum`
+`input -> inc -> sum`
 
-Until a Genia runtime adapter is wired into the host path, execution should fail with a structured runtime error instead of running the pipeline in the host shell.
+In Node/test environments, the host boundary now delegates to the Genia-owned Python path. In the browser, execution still fails with a structured runtime error until a real browser/runtime transport is wired in.
+
+Inside `src/genia/flowbook`, the current local Genia-owned workflow MVP supports the operations:
+
+- `input`
+- `inc`
+- `map`
+- `sum`
 
 ## What To Build Next
 
@@ -82,7 +91,7 @@ The next implementation milestone is **not** UI polish.
 The next implementation milestone is:
 1. notebook cells as first-class data
 2. notebook execution across cells
-3. replacement of the temporary compatibility runtime with a real Genia-owned runtime path
+3. wiring the active host path to the Genia-owned runtime path that now exists in-repo
 
 If a choice comes up between UI convenience and semantic correctness, choose semantic correctness.
 

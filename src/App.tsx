@@ -10,15 +10,13 @@ import Toolbar from './ui/Toolbar';
 
 function makeDefaultGraph(): FlowGraph {
   const nodes = [
-    createNode('n1', 'source', 'source', 100, 200),
-    createNode('n2', 'transform', 'lines', 300, 200),
-    createNode('n3', 'transform', 'map(parse_int)', 500, 200),
-    createNode('n4', 'sink', 'sum', 700, 200),
+    createNode('n1', 'source', 'input', 100, 200),
+    createNode('n2', 'transform', 'inc', 300, 200),
+    createNode('n3', 'sink', 'sum', 500, 200),
   ];
   const edges = [
     createEdge('n1', 'n2'),
     createEdge('n2', 'n3'),
-    createEdge('n3', 'n4'),
   ];
   return createGraph(nodes, edges);
 }
@@ -29,8 +27,8 @@ function newId() {
 }
 
 const NODE_OPS: Record<NodeType, string> = {
-  source: 'source',
-  transform: 'lines',
+  source: 'input',
+  transform: 'inc',
   sink: 'sum',
 };
 

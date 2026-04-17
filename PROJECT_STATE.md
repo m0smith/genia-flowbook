@@ -13,10 +13,15 @@ Implemented today:
 - Flowbook core boundary in TypeScript for notebook-shaped validation/execution requests
 - In-process host bridge that routes the React demo through notebook-shaped Flowbook core data
 - Compatibility notebook wrapper for the current graph prototype (`FlowGraph` -> single `pipeline_cell`)
-- Compatibility operation registry remains in the TypeScript host path for schema validation only
-- Default `src/genia/flowbook` interpreter now shells out to the Genia executable through a subprocess adapter instead of executing graphs through Python host fallback code
-- Default `src/genia/flowbook` subprocess interpreter now uses a finite default timeout
+- Genia-owned workflow runner under `src/genia/flowbook/workflow.py` now validates and executes minimal pipeline data in-repo
+- The in-repo Genia-owned workflow runner supports `input`, `inc`, `map`, and `sum`
+- Default `src/genia/flowbook` interpreter now targets the in-repo Genia-owned workflow runner
+- `src/genia/flowbook/host_bridge.py` now exposes the Genia-owned notebook validation/execution path to the TypeScript host in Node/test environments
+- `src/core/flowbook` now delegates notebook validation/execution to the Genia-owned Python path instead of defining notebook/pipeline semantics locally
+- Optional `src/genia/flowbook` subprocess interpreter remains available for Genia CLI integration and uses a finite default timeout
+- Pipeline cell execution now preserves pipeline `node_outputs` in the Genia-owned notebook execution path
 - Black-box tests for the core/bridge execution boundary and structured error shape
+- Black-box tests for Genia-owned workflow validation, execution, and structured result/failure shapes
 
 Specification and design (not yet implemented):
 - Flowbook Notebook Core specification (see `docs/book/NOTEBOOK_SPEC.md`)
@@ -39,18 +44,20 @@ Specification and design (not yet implemented):
 Partial:
 - Notebook runtime boundary exists for the current TypeScript demo path, but only as a Phase 1 compatibility layer
 - React app no longer calls the graph executor as the primary runtime entrypoint
-- The current demo still routes through notebook-shaped data and a single `pipeline_cell`, but host-side execution now fails closed unless a Genia runtime adapter is provided
-- `src/genia/flowbook` now defaults to a Genia CLI subprocess adapter, but the repository still does not implement the full Genia-owned runtime transport / runner integration for the active host path
+- The current demo still routes through notebook-shaped data and a single `pipeline_cell`
+- The Node/test host path now delegates to the Genia-owned Python path, but the browser host path still fails closed because browser-native/runtime transport is not implemented
+- `src/genia/flowbook` now has a real Genia-owned in-repo workflow runner, but the repository still does not implement the full Genia-owned runtime transport / runner integration for the browser host path
 - The repository now documents the React app as a temporary host shell rather than the product semantic implementation
 
 Not implemented:
 - Genia-owned runtime transport between the React host and `src/genia/flowbook`
-- Host-path execution of the prototype graph through a real Genia interpreter/runtime adapter
+- Browser host-path execution of the prototype graph through a real Genia interpreter/runtime adapter
 - Browser-native Genia execution
 - Notebook cells as first-class editable objects in the active React host path
 - Multi-cell notebook execution in the active React host path
 - Full notebook UI/editor for all five cell types
 - Parameter resolution in operations
+- The broader Genia operation system beyond the in-repo workflow MVP set (`input`, `inc`, `map`, `sum`)
 - Any feature not explicitly listed above
 
 ## 1) Source of truth rule

@@ -153,6 +153,10 @@ Contains a directed acyclic graph (DAG) of operations. The core execution unit.
 - Inputs to a node come from flattened outputs of parent nodes
 - Output: Result of the final (sink) node(s), or error
 
+**Current implemented subset in `src/genia/flowbook`:**
+- The in-repo Genia-owned workflow runner currently validates DAG shape, rejects cycles, and returns structured workflow results with `success`, `output`, `error`, and `nodeOutputs`
+- The current implemented MVP operation set is: `input`, `inc`, `map`, `sum`
+
 **Example:**
 ```json
 {

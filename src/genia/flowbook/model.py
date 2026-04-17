@@ -159,6 +159,7 @@ class CellResultSuccess:
     cell_id: str = ""
     cell_type: CellType = CellType.NOTE
     output: List[Any] = field(default_factory=list)
+    node_outputs: Dict[str, List[Any]] = field(default_factory=dict)
     executed_at: Optional[str] = None
 
 

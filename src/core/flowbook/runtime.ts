@@ -30,19 +30,8 @@ function makeError(
   };
 }
 
-function compatibilityOperations(): Record<string, OperationFn> {
-  return {
-    source: () => ['1\n2\n3\n4\n5'],
-    lines: (input) => String(input[0] ?? '').split('\n').filter(Boolean),
-    'map(parse_int)': (input) => input.map((value) => parseInt(String(value), 10)),
-    sum: (input) => [input.reduce((total, value) => Number(total) + Number(value), 0)],
-  };
-}
-
-const COMPATIBILITY_OPERATIONS = Object.freeze(compatibilityOperations());
-
-class GeniaRequiredPipelineRuntime implements PipelineRuntime {
-  private readonly operations = Object.keys(COMPATIBILITY_OPERATIONS);
+class GeniaTransportRuntime implements PipelineRuntime {
+  private readonly operations: string[] = [];
 
   listOperations(): string[] {
     return this.operations;
@@ -55,19 +44,19 @@ class GeniaRequiredPipelineRuntime implements PipelineRuntime {
       nodeOutputs: {},
       error: makeError(
         'EXECUTION_FAILED',
-        'Flowbook execution requires a Genia runtime adapter; host-side pipeline execution is disabled.',
-        'Pipeline execution',
+        'Flowbook pipeline execution is Genia-owned; the TypeScript host does not execute pipelines.',
+        'Genia transport',
       ),
     };
   }
 }
 
-let defaultRuntime: PipelineRuntime = new GeniaRequiredPipelineRuntime();
+let defaultRuntime: PipelineRuntime = new GeniaTransportRuntime();
 
 export function getDefaultPipelineRuntime(): PipelineRuntime {
   return defaultRuntime;
 }
 
 export function getCompatibilityOperationRegistry(): Readonly<Record<string, OperationFn>> {
-  return COMPATIBILITY_OPERATIONS;
+  return Object.freeze({});
 }
